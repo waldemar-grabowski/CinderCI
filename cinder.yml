@@ -1,0 +1,13 @@
+pipeline: cinderci
+triggers: [push]
+
+steps:
+  fmt:
+    run: cargo fmt --check
+  lint:
+    run: cargo clippy -- -D warnings
+  test:
+    run: cargo test
+  build:
+    needs: [fmt, lint, test]
+    run: cargo build --release
