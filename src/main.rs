@@ -1,4 +1,140 @@
-use std::{env, process::ExitCode};
+use std::{env, process::ExitCode, vec};
+
+#[derive(Debug)]
+enum Trigger {
+    Push,
+    PullRequest,
+    Manual,
+}
+
+#[derive(Debug)]
+enum StepStatus {
+    Pending,
+    Running,
+    Succeeded(std::time::Duration),
+    Failed(i32),
+    Skipped(String),
+}
+
+#[derive(Debug)]
+struct Step {
+    name: String,
+    command: String,
+    dependencies: Vec<String>,
+    condition: Option<String>,
+}
+
+impl Step {
+    fn new(step_name: String, step_command: String) -> Step {
+        Step {
+            name: step_name,
+            command: step_command,
+            dependencies: vec![],
+            condition: None,
+        }
+    }
+
+    // Short if
+    pub fn is_root(&self) -> bool {
+        self.dependencies.is_empty()
+    }
+
+    // Long if
+    pub fn is_condition(&self) -> bool {
+        if self.condition.iter().len() > 0 {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Pipeline {
+    name: String,
+    steps: Vec<Step>,
+    trigger: Vec<Trigger>,
+}
+
+impl Pipeline {
+    // Tutaj kontynuuj, tak kazdy krok dla obu pipelinow w 5.2
+    fn cinderci() -> Pipeline {
+        let mut cinderci = vec![];
+        cinderci.push(Step::new(
+            "fmt".to_string(),
+            "cargo fmt --check".to_string(),
+        ));
+        cinderci.push(Step::new(
+            "lint".to_string(),
+            "cargo clippy -- -D warnings".to_string(),
+        ));
+        cinderci.push(Step::new("test".to_string(), "cargo test".to_string()));
+        let mut build = Step::new("build".to_string(), "cargo build --release".to_string());
+        build.dependencies = vec!["fmt".to_string(), "lint".to_string(), "test".to_string()];
+        cinderci.push(build);
+        Pipeline {
+            name: "cinderci".to_string(),
+            steps: cinderci,
+            trigger: vec![Trigger::Push],
+        }
+    }
+
+    fn example() -> Pipeline {
+        let mut example = vec![];
+        example.push(Step::new(
+            "fmt".to_string(),
+            "cargo fmt --check".to_string(),
+        ));
+        example.push(Step::new(
+            "lint".to_string(),
+            "cargo clippy -- -D warnings".to_string(),
+        ));
+        example.push(Step::new(
+            "build".to_string(),
+            "cargo build --release".to_string(),
+        ));
+        let mut test = Step::new("test".to_string(), "cargo test".to_string());
+        test.dependencies = vec!["build".to_string()];
+        example.push(test);
+        let mut deploy = Step::new("deploy".to_string(), "./deploy.sh".to_string());
+        deploy.dependencies = vec!["test".to_string(), "lint".to_string(), "fmt".to_string()];
+        deploy.condition = Some("branch == \"main\" && event == \"push\"".to_string());
+        example.push(deploy);
+        Pipeline {
+            name: "build-and-test".to_string(),
+            steps: example,
+            trigger: vec![Trigger::Push, Trigger::PullRequest],
+        }
+    }
+
+    fn steps_amount(&self) -> usize {
+        let mut amount = 0;
+        for _step in &self.steps {
+            amount += 1;
+        }
+        amount
+    }
+
+    fn roots_amount(&self) -> usize {
+        let mut amount = 0;
+        for step in &self.steps {
+            if step.is_root() {
+                amount += 1
+            };
+        }
+        amount
+    }
+
+    fn conditions_amount(&self) -> usize {
+        let mut amount = 0;
+        for step in &self.steps {
+            if step.is_condition() {
+                amount += 1
+            };
+        }
+        amount
+    }
+}
 
 const HELP_COMMANDS: [(&str, &str, u8, bool); 7] = [
     ("help", "this help", 0, true),
