@@ -1,4 +1,4 @@
-use std::{env, process};
+use std::{env, process::ExitCode};
 
 const HELP_COMMANDS: [(&str, &str, u8, bool); 7] = [
     ("help", "this help", 0, true),
@@ -11,7 +11,7 @@ const HELP_COMMANDS: [(&str, &str, u8, bool); 7] = [
 ];
 
 fn print_help() {
-    println!("cinderci - local CI/CD, which is building itself 🔥\n");
+    println!("cinderci - local CI/CD, which is building itself 🔥.\n");
     println!("Commands:");
     for (name, desc, etap, avail) in HELP_COMMANDS {
         if avail {
@@ -22,32 +22,33 @@ fn print_help() {
     }
 }
 
-fn main() {
+fn main() -> ExitCode {
     let command: Option<String> = env::args().nth(1);
 
     match command.as_deref() {
         Some("-V" | "version" | "--version") => {
-            println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+            println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+            return ExitCode::from(0);
         }
         Some("-h" | "help" | "--help") | None => print_help(),
         Some(command) => {
             for (name, _desc, etap, avail) in HELP_COMMANDS {
                 if command == name && !avail {
                     eprintln!(
-                        "Command {} not available, will be implemented at stage {}",
+                        "Command {} not available, will be implemented at stage {}.",
                         name, etap
                     );
-                    print_help();
-                    process::exit(2);
+                    return ExitCode::from(2);
                 }
             }
 
             eprintln!(
-                "Command {} not available, please use one of the following commands:",
+                "Command {} not available, please use 'cinderci help' to see available commands.",
                 command
             );
-            print_help();
-            process::exit(2);
+            return ExitCode::from(2);
         }
     }
+
+    ExitCode::SUCCESS
 }
