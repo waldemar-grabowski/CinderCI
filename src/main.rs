@@ -8,7 +8,7 @@ enum Trigger {
 }
 
 #[derive(Debug)]
-enum StepStatus {
+pub enum StepStatus {
     Pending,
     Running,
     Succeeded(std::time::Duration),
@@ -133,6 +133,18 @@ impl Pipeline {
             };
         }
         amount
+    }
+}
+
+impl std::fmt::Display for StepStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::Pending => write!(f, "⏳ Pending"),
+            Self::Running => write!(f, "▶ Running "),
+            Self::Succeeded(s) => write!(f, "✓ Success ({})", s.as_secs_f32()),
+            Self::Failed(e) => write!(f, "✗ Failed ({})", e),
+            Self::Skipped(e) => write!(f, "○ Skipped ({})", e),
+        }
     }
 }
 
