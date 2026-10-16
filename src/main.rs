@@ -1,4 +1,4 @@
-use std::{env, process::ExitCode, vec};
+use std::{env, fmt::Debug, process::ExitCode, vec};
 
 #[derive(Debug)]
 enum Trigger {
@@ -57,7 +57,6 @@ struct Pipeline {
 }
 
 impl Pipeline {
-    // Tutaj kontynuuj, tak kazdy krok dla obu pipelinow w 5.2
     fn cinderci() -> Pipeline {
         let mut cinderci = vec![];
         cinderci.push(Step::new(
@@ -141,9 +140,19 @@ impl std::fmt::Display for StepStatus {
         match &self {
             Self::Pending => write!(f, "⏳ Pending"),
             Self::Running => write!(f, "▶ Running "),
-            Self::Succeeded(s) => write!(f, "✓ Success ({})", s.as_secs_f32()),
+            Self::Succeeded(s) => write!(f, "✓ Success ({}s)", s.as_secs_f32().round()),
             Self::Failed(e) => write!(f, "✗ Failed ({})", e),
             Self::Skipped(e) => write!(f, "○ Skipped ({})", e),
+        }
+    }
+}
+
+impl std::fmt::Display for Trigger {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::Manual => write!(f, "manual"),
+            Self::PullRequest => write!(f, "pull_request"),
+            Self::Push => write!(f, "push"),
         }
     }
 }
@@ -151,7 +160,7 @@ impl std::fmt::Display for StepStatus {
 const HELP_COMMANDS: [(&str, &str, u8, bool); 7] = [
     ("help", "this help", 0, true),
     ("version", "program version", 0, true),
-    ("plan", "pipeline plan", 1, false),
+    ("plan", "pipeline plan", 1, true),
     ("validate", "validate cinder.yaml", 5, false),
     ("graph", "dependecy graph", 6, false),
     ("run", "start pipeline", 7, false),
@@ -170,8 +179,37 @@ fn print_help() {
     }
 }
 
+fn print_plan(pipeline: &Pipeline) {
+    println!();
+    let mut triggers: Vec<String> = vec![];
+    for t in &pipeline.trigger {
+        triggers.push(t.to_string());
+    }
+    println!(
+        "Pipeline: {}   (trigger: {})",
+        pipeline.name,
+        triggers.join(", ")
+    );
+
+    for s in &pipeline.steps {
+        println!("⏳  {:<5}     {}", s.name, s.command);
+        if !Step::is_root(s) {
+            println!("              ↳ needs: {}", s.dependencies.join(", "))
+        };
+    }
+
+    println!();
+    println!(
+        "{} steps · {} without dependencies · {} conditional",
+        Pipeline::steps_amount(pipeline),
+        Pipeline::roots_amount(pipeline),
+        Pipeline::conditions_amount(pipeline)
+    );
+}
+
 fn main() -> ExitCode {
     let command: Option<String> = env::args().nth(1);
+    let arg1: Option<String> = env::args().nth(2);
 
     match command.as_deref() {
         Some("-V" | "version" | "--version") => {
@@ -179,6 +217,11 @@ fn main() -> ExitCode {
             return ExitCode::from(0);
         }
         Some("-h" | "help" | "--help") | None => print_help(),
+        Some("-p" | "plan" | "--plan") => match arg1.as_deref() {
+            Some("example") => print_plan(&Pipeline::example()),
+            None => print_plan(&Pipeline::cinderci()),
+            Some(&_) => return ExitCode::from(2),
+        },
         Some(command) => {
             for (name, _desc, etap, avail) in HELP_COMMANDS {
                 if command == name && !avail {
