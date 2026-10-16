@@ -34,18 +34,12 @@ impl Step {
         }
     }
 
-    // Short if
     pub fn is_root(&self) -> bool {
         self.dependencies.is_empty()
     }
 
-    // Long if
     pub fn is_condition(&self) -> bool {
-        if self.condition.iter().len() > 0 {
-            true
-        } else {
-            false
-        }
+        self.condition.iter().len() > 0
     }
 }
 
@@ -139,8 +133,8 @@ impl std::fmt::Display for StepStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             Self::Pending => write!(f, "⏳ Pending"),
-            Self::Running => write!(f, "▶ Running "),
-            Self::Succeeded(s) => write!(f, "✓ Success ({}s)", s.as_secs_f32().round()),
+            Self::Running => write!(f, "▶ Running"),
+            Self::Succeeded(s) => write!(f, "✓ Success ({}s)", s.as_secs_f32()),
             Self::Failed(e) => write!(f, "✗ Failed ({})", e),
             Self::Skipped(e) => write!(f, "○ Skipped ({})", e),
         }
@@ -180,7 +174,6 @@ fn print_help() {
 }
 
 fn print_plan(pipeline: &Pipeline) {
-    println!();
     let mut triggers: Vec<String> = vec![];
     for t in &pipeline.trigger {
         triggers.push(t.to_string());
@@ -190,11 +183,21 @@ fn print_plan(pipeline: &Pipeline) {
         pipeline.name,
         triggers.join(", ")
     );
+    println!();
+
+    let pending = StepStatus::Pending;
+    let running = StepStatus::Running;
+    let succeed = StepStatus::Succeeded(std::time::Duration::from_millis(12_400));
+    let failed = StepStatus::Failed(1);
+    let skipped = StepStatus::Skipped("dependency 'test' crashed".to_string());
 
     for s in &pipeline.steps {
-        println!("⏳  {:<5}     {}", s.name, s.command);
+        println!("{}   {:<8}     {}", pending, s.name, s.command);
         if !Step::is_root(s) {
-            println!("              ↳ needs: {}", s.dependencies.join(", "))
+            println!("                 ↳ needs: {}", s.dependencies.join(", "));
+            if let Some(condition) = &s.condition {
+                println!("                 ↳ condition:{} ", condition);
+            }
         };
     }
 
@@ -204,6 +207,11 @@ fn print_plan(pipeline: &Pipeline) {
         Pipeline::steps_amount(pipeline),
         Pipeline::roots_amount(pipeline),
         Pipeline::conditions_amount(pipeline)
+    );
+
+    println!(
+        "Legends: {} · {} · {} · {} · {}",
+        pending, running, succeed, failed, skipped
     );
 }
 
@@ -220,7 +228,13 @@ fn main() -> ExitCode {
         Some("-p" | "plan" | "--plan") => match arg1.as_deref() {
             Some("example") => print_plan(&Pipeline::example()),
             None => print_plan(&Pipeline::cinderci()),
-            Some(&_) => return ExitCode::from(2),
+            Some(arg1) => {
+                eprintln!(
+                    "Error: Unknown pipeline: '{}' (available: cinderci, example)",
+                    arg1
+                );
+                return ExitCode::from(2);
+            }
         },
         Some(command) => {
             for (name, _desc, etap, avail) in HELP_COMMANDS {
