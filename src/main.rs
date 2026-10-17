@@ -149,6 +149,17 @@ impl Pipeline {
         names
     }
 
+    fn dependents_of(&self, name: &str) -> Vec<&str> {
+        let mut result: Vec<&str> = vec![];
+        for s in &self.steps {
+            for d in &s.dependencies {
+                if d == name {
+                    result.push(&s.name);
+                }
+            }
+        }
+        result
+    }
 }
 
 impl std::fmt::Display for StepStatus {
@@ -237,9 +248,22 @@ fn print_plan(pipeline: &Pipeline) {
     );
 }
 
-fn print_step(step: &Step) {
+fn print_step(step: &Step, pipeline: &Pipeline) {
     println!("Step: {}", step.name);
-    println!("  command:   {}", step.command);
+    println!("  command:      {}", step.command);
+    if step.is_root() {
+        println!("  needs:        - (root)");
+    } else {
+        println!("  needs:        {}", step.dependencies.join(", "));
+    }
+    println!(
+        "  needed by:    {}",
+        if pipeline.dependents_of(&pipeline.name).is_empty() {
+            "-".to_string()
+        } else {
+            pipeline.dependents_of(&pipeline.name).join(", ")
+        }
+    );
 }
 
 fn main() -> ExitCode {
@@ -263,13 +287,23 @@ fn main() -> ExitCode {
                 return ExitCode::from(2);
             }
         },
-        Some( "-s" | "show"| "--show" ) => {
+        Some("-s" | "show" | "--show") => {
             let pipe = Pipeline::cinderci();
             match arg1.as_deref() {
-                None => { eprintln!("Usage: cinderci show <step>"); return ExitCode::from(2);},
+                None => {
+                    eprintln!("Usage: cinderci show <step>");
+                    return ExitCode::from(2);
+                }
                 Some(arg1) => match Pipeline::find_step(&pipe, arg1) {
-                    Some(s) => print_step(s),
-                    None =>  {eprintln!("Error: no step '{}' (available: {})", arg1, Pipeline::step_names(&pipe).join(", ")); return ExitCode::from(2);},
+                    Some(s) => print_step(s, &pipe),
+                    None => {
+                        eprintln!(
+                            "Error: no step '{}' (available: {})",
+                            arg1,
+                            Pipeline::step_names(&pipe).join(", ")
+                        );
+                        return ExitCode::from(2);
+                    }
                 },
             }
         }
@@ -289,7 +323,7 @@ fn main() -> ExitCode {
                 command
             );
             return ExitCode::from(2);
-        },
+        }
     }
 
     ExitCode::SUCCESS
