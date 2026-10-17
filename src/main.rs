@@ -4,6 +4,7 @@ use std::{env, fmt::Debug, process::ExitCode, vec};
 enum Trigger {
     Push,
     PullRequest,
+    #[allow(dead_code)]
     Manual,
 }
 
@@ -127,6 +128,27 @@ impl Pipeline {
         }
         amount
     }
+
+    #[allow(clippy::manual_find)]
+    pub fn find_step(&self, name: &str) -> Option<&Step> {
+        for step in &self.steps {
+            if step.name == name {
+                return Some(step);
+            }
+        }
+        None
+    }
+
+    fn step_names(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = vec![];
+        for step in &self.steps {
+            let name = &step.name;
+            names.push(name);
+        }
+        names.join(", ");
+        names
+    }
+
 }
 
 impl std::fmt::Display for StepStatus {
@@ -215,6 +237,11 @@ fn print_plan(pipeline: &Pipeline) {
     );
 }
 
+fn print_step(step: &Step) {
+    println!("Step: {}", step.name);
+    println!("  command:   {}", step.command);
+}
+
 fn main() -> ExitCode {
     let command: Option<String> = env::args().nth(1);
     let arg1: Option<String> = env::args().nth(2);
@@ -236,6 +263,16 @@ fn main() -> ExitCode {
                 return ExitCode::from(2);
             }
         },
+        Some( "-s" | "show"| "--show" ) => {
+            let pipe = Pipeline::cinderci();
+            match arg1.as_deref() {
+                None => { eprintln!("Usage: cinderci show <step>"); return ExitCode::from(2);},
+                Some(arg1) => match Pipeline::find_step(&pipe, arg1) {
+                    Some(s) => print_step(s),
+                    None =>  {eprintln!("Error: no step '{}' (available: {})", arg1, Pipeline::step_names(&pipe).join(", ")); return ExitCode::from(2);},
+                },
+            }
+        }
         Some(command) => {
             for (name, _desc, etap, avail) in HELP_COMMANDS {
                 if command == name && !avail {
@@ -252,7 +289,7 @@ fn main() -> ExitCode {
                 command
             );
             return ExitCode::from(2);
-        }
+        },
     }
 
     ExitCode::SUCCESS
