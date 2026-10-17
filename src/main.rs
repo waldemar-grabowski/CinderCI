@@ -1,4 +1,4 @@
-use std::{env, fmt::Debug, process::ExitCode, vec};
+use std::{collections::HashMap, env, fmt::Debug, process::ExitCode, vec};
 
 #[derive(Debug)]
 enum Trigger {
@@ -15,6 +15,21 @@ pub enum StepStatus {
     Succeeded(std::time::Duration),
     Failed(i32),
     Skipped(String),
+}
+
+#[derive(Debug)]
+struct RunState {
+    statuses: HashMap<String, StepStatus>
+}
+
+impl RunState {
+    fn new(pipeline: &Pipeline) -> RunState {
+        let mut map = HashMap::new();
+        for step in &pipeline.steps {
+            map.insert(step.name.clone(), StepStatus::Pending);
+        }
+        RunState { statuses: map }
+    }
 }
 
 #[derive(Debug)]
