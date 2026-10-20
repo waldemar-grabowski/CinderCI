@@ -19,7 +19,7 @@ pub enum StepStatus {
 
 #[derive(Debug)]
 struct RunState {
-    statuses: HashMap<String, StepStatus>
+    statuses: HashMap<String, StepStatus>,
 }
 
 impl RunState {
@@ -55,7 +55,7 @@ impl Step {
     }
 
     pub fn is_condition(&self) -> bool {
-        self.condition.iter().len() > 0
+        self.condition.is_some()
     }
 }
 
@@ -154,14 +154,12 @@ impl Pipeline {
         None
     }
 
-    fn step_names(&self) -> Vec<&str> {
-        let mut names: Vec<&str> = vec![];
-        for step in &self.steps {
-            let name = &step.name;
-            names.push(name);
-        }
-        names.join(", ");
-        names
+    fn step_names(&self) -> String {
+        self.steps
+            .iter()
+            .map(|step| step.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
     }
 
     fn dependents_of(&self, name: &str) -> Vec<&str> {
@@ -266,19 +264,27 @@ fn print_plan(pipeline: &Pipeline) {
 fn print_step(step: &Step, pipeline: &Pipeline) {
     println!("Step: {}", step.name);
     println!("  command:      {}", step.command);
+
     if step.is_root() {
         println!("  needs:        - (root)");
     } else {
         println!("  needs:        {}", step.dependencies.join(", "));
     }
+
+    let dependents = pipeline.dependents_of(&step.name);
+
     println!(
         "  needed by:    {}",
-        if pipeline.dependents_of(&pipeline.name).is_empty() {
+        if dependents.is_empty() {
             "-".to_string()
         } else {
-            pipeline.dependents_of(&step.name).join(", ")
+            dependents.join(", ")
         }
     );
+
+    if let Some(condition) = &step.condition {
+        println!("  condition:    {}", condition);
+    }
 }
 
 fn simulate(pipeline: &Pipeline, name: Option<&str>) -> RunState {
@@ -287,17 +293,22 @@ fn simulate(pipeline: &Pipeline, name: Option<&str>) -> RunState {
     for step in &pipeline.steps {
         let mut reason: Option<String> = None;
         for dependency in &step.dependencies {
-            if let  Some(StepStatus::Failed(_) | StepStatus::Skipped(_) ) = state.statuses.get(dependency) && reason.is_none(){
-                    reason = format!("dependency '{dependency}' failed").into();
+            if let Some(StepStatus::Failed(_) | StepStatus::Skipped(_)) =
+                state.statuses.get(dependency)
+                && reason.is_none()
+            {
+                reason = format!("dependency '{dependency}' failed").into();
             };
         }
 
         let status = if let Some(text) = reason {
             StepStatus::Skipped(text)
-        } else if name ==  Some(step.name.as_str()) {
+        } else if name == Some(step.name.as_str()) {
             StepStatus::Failed(1)
         } else {
-            StepStatus::Succeeded(std::time::Duration::from_millis(step.command.len() as u64 * 100))
+            StepStatus::Succeeded(std::time::Duration::from_millis(
+                step.command.len() as u64 * 100,
+            ))
         };
         state.statuses.insert(step.name.clone(), status);
     }
@@ -305,73 +316,138 @@ fn simulate(pipeline: &Pipeline, name: Option<&str>) -> RunState {
 }
 
 fn print_simulation(pipeline: &Pipeline, state: &RunState) {
+    let mut success = 0;
+    let mut failed = 0;
+    let mut skipped = 0;
+
     for step in &pipeline.steps {
         if let Some(status) = state.statuses.get(&step.name) {
             println!("  {:<8}{}", step.name, status);
+            match status {
+                StepStatus::Succeeded(_s) => success += 1,
+                StepStatus::Failed(_i) => failed += 1,
+                StepStatus::Skipped(_s) => skipped += 1,
+                StepStatus::Running | StepStatus::Pending => (),
+            }
         }
     }
+    println!();
+    println!(
+        "✓ Succeeded: {}, ✗ Failed: {}, ○ Skipped: {}",
+        success, failed, skipped
+    );
 }
 
 fn main() -> ExitCode {
-    let command: Option<String> = env::args().nth(1);
-    let arg1: Option<String> = env::args().nth(2);
+    let mut args = env::args().skip(1);
+
+    let command = args.next();
+    let arg2 = args.next();
+    let arg3 = args.next();
 
     match command.as_deref() {
         Some("-V" | "version" | "--version") => {
             println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-            return ExitCode::from(0);
         }
-        Some("-h" | "help" | "--help") | None => print_help(),
-        Some("-p" | "plan" | "--plan") => match arg1.as_deref() {
-            Some("example") => print_plan(&Pipeline::example()),
-            None => print_plan(&Pipeline::cinderci()),
-            Some(arg1) => {
+
+        Some("-h" | "help" | "--help") | None => {
+            print_help();
+        }
+
+        Some("-p" | "plan" | "--plan") => match arg2.as_deref() {
+            Some("example") => {
+                print_plan(&Pipeline::example());
+            }
+
+            None => {
+                print_plan(&Pipeline::cinderci());
+            }
+
+            Some(pipeline_name) => {
                 eprintln!(
                     "Error: Unknown pipeline: '{}' (available: cinderci, example)",
-                    arg1
+                    pipeline_name
                 );
                 return ExitCode::from(2);
             }
         },
+
         Some("-s" | "show" | "--show") => {
-            let pipe = Pipeline::cinderci();
-            match arg1.as_deref() {
-                None => {
-                    eprintln!("Usage: cinderci show <step>");
-                    return ExitCode::from(2);
-                }
-                Some(arg1) => match Pipeline::find_step(&pipe, arg1) {
-                    Some(s) => print_step(s, &pipe),
+            let pipeline = Pipeline::cinderci();
+
+            match arg2.as_deref() {
+                Some(step_name) => match pipeline.find_step(step_name) {
+                    Some(step) => print_step(step, &pipeline),
+
                     None => {
                         eprintln!(
                             "Error: no step '{}' (available: {})",
-                            arg1,
-                            Pipeline::step_names(&pipe).join(", ")
+                            step_name,
+                            pipeline.step_names()
                         );
                         return ExitCode::from(2);
                     }
                 },
+
+                None => {
+                    eprintln!("Usage: cinderci show <step>");
+                    return ExitCode::from(2);
+                }
             }
         }
+
         Some("simulate" | "--simulate") => {
-            let pipe = Pipeline::cinderci();
-            let sim = simulate(&pipe, None);
-            print_simulation(&pipe, &sim);
-        },
-        Some(command) => {
-            for (name, _desc, etap, avail) in HELP_COMMANDS {
-                if command == name && !avail {
+            let pipeline = Pipeline::cinderci();
+
+            match arg2.as_deref() {
+                None => {
+                    let state = simulate(&pipeline, None);
+                    print_simulation(&pipeline, &state);
+                }
+
+                Some("fail" | "--fail") => match arg3.as_deref() {
+                    Some(step_name) => {
+                        if pipeline.find_step(step_name).is_none() {
+                            eprintln!(
+                                "Error: no step '{}' (available: {})",
+                                step_name,
+                                pipeline.step_names()
+                            );
+                            return ExitCode::from(2);
+                        }
+
+                        let state = simulate(&pipeline, Some(step_name));
+                        print_simulation(&pipeline, &state);
+                    }
+
+                    None => {
+                        eprintln!("Usage: cinderci simulate --fail <step>");
+                        return ExitCode::from(2);
+                    }
+                },
+
+                Some(option) => {
+                    eprintln!("Error: Unknown option '{}'", option);
+                    eprintln!("Usage: cinderci simulate [--fail <step>]");
+                    return ExitCode::from(2);
+                }
+            }
+        }
+
+        Some(command_name) => {
+            for (name, _description, stage, available) in HELP_COMMANDS {
+                if command_name == name && !available {
                     eprintln!(
                         "Command {} not available, will be implemented at stage {}.",
-                        name, etap
+                        name, stage
                     );
                     return ExitCode::from(2);
                 }
             }
 
             eprintln!(
-                "Command {} not available, please use 'cinderci help' to see available commands.",
-                command
+                "Command '{}' not available. Use 'cinderci help' to see available commands.",
+                command_name
             );
             return ExitCode::from(2);
         }
