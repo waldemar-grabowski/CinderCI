@@ -306,7 +306,9 @@ fn simulate(pipeline: &Pipeline, name: Option<&str>) -> RunState {
 
 fn print_simulation(pipeline: &Pipeline, state: &RunState) {
     for step in &pipeline.steps {
-        state.statuses.get(step)
+        if let Some(status) = state.statuses.get(&step.name) {
+            println!("  {:<8}{}", step.name, status);
+        }
     }
 }
 
@@ -351,6 +353,11 @@ fn main() -> ExitCode {
                 },
             }
         }
+        Some("simulate" | "--simulate") => {
+            let pipe = Pipeline::cinderci();
+            let sim = simulate(&pipe, None);
+            print_simulation(&pipe, &sim);
+        },
         Some(command) => {
             for (name, _desc, etap, avail) in HELP_COMMANDS {
                 if command == name && !avail {
