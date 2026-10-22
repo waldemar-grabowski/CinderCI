@@ -1,13 +1,15 @@
 use crate::model::{Pipeline, Step, StepStatus};
 use crate::state::RunState;
 
+#[derive(Debug, PartialEq)]
 pub enum Command {
     Help,
     Version,
-    Plan(Pipeline),
-    Show(Step),
-    Simulate(Option<Step>),
-    Invalid,
+    Plan(Option<String>),
+    Show(String),
+    Simulate(Option<String>),
+    Invalid(String),
+    Locked(String, u8),
 }
 
 pub const HELP_COMMANDS: [(&str, &str, u8, bool); 7] = [
@@ -121,4 +123,15 @@ pub fn print_simulation(pipeline: &Pipeline, state: &RunState) {
         "✓ Succeeded: {}, ✗ Failed: {}, ○ Skipped: {}",
         success, failed, skipped
     );
+}
+
+pub fn read_commands(command: &[String]) -> Command {
+    match command.first().map(String::as_str) {
+        Some("-h" | "help" | "--help") | None => Command::Help,
+        Some("-V" | "version" | "--version") => Command::Version,
+        Some("-p" | "plan" | "--plan") => Command::Help,
+        Some("-s" | "show" | "--show") => Command::Help,
+        Some("simulate" | "--simulate") => Command::Help,
+        Some(_command_name) => Command::Invalid("BlaBla".to_string()),
+    }
 }

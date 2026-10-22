@@ -5,6 +5,9 @@ use cinderci::model::Pipeline;
 use cinderci::sim::*;
 
 fn main() -> ExitCode {
+    let args: Vec<String> = env::args().skip(1).collect();
+    eprintln!("{:?}", read_commands(&args));
+
     let mut args = env::args().skip(1);
 
     let command = args.next();
