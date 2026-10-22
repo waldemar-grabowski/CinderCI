@@ -41,10 +41,10 @@ struct Step {
 }
 
 impl Step {
-    fn new(step_name: String, step_command: String) -> Step {
+    fn new(step_name: &str, step_command: &str) -> Step {
         Step {
-            name: step_name,
-            command: step_command,
+            name: step_name.to_string(),
+            command: step_command.to_string(),
             dependencies: vec![],
             condition: None,
         }
@@ -70,15 +70,15 @@ impl Pipeline {
     fn cinderci() -> Pipeline {
         let mut cinderci = vec![];
         cinderci.push(Step::new(
-            "fmt".to_string(),
-            "cargo fmt --check".to_string(),
+            "fmt",
+            "cargo fmt --check",
         ));
         cinderci.push(Step::new(
-            "lint".to_string(),
-            "cargo clippy -- -D warnings".to_string(),
+            "lint",
+            "cargo clippy -- -D warnings",
         ));
-        cinderci.push(Step::new("test".to_string(), "cargo test".to_string()));
-        let mut build = Step::new("build".to_string(), "cargo build --release".to_string());
+        cinderci.push(Step::new("test", "cargo test"));
+        let mut build = Step::new("build", "cargo build --release");
         build.dependencies = vec!["fmt".to_string(), "lint".to_string(), "test".to_string()];
         cinderci.push(build);
         Pipeline {
@@ -91,21 +91,21 @@ impl Pipeline {
     fn example() -> Pipeline {
         let mut example = vec![];
         example.push(Step::new(
-            "fmt".to_string(),
-            "cargo fmt --check".to_string(),
+            "fmt",
+            "cargo fmt --check",
         ));
         example.push(Step::new(
-            "lint".to_string(),
-            "cargo clippy -- -D warnings".to_string(),
+            "lint",
+            "cargo clippy -- -D warnings",
         ));
         example.push(Step::new(
-            "build".to_string(),
-            "cargo build --release".to_string(),
+            "build",
+            "cargo build --release",
         ));
-        let mut test = Step::new("test".to_string(), "cargo test".to_string());
+        let mut test = Step::new("test", "cargo test");
         test.dependencies = vec!["build".to_string()];
         example.push(test);
-        let mut deploy = Step::new("deploy".to_string(), "./deploy.sh".to_string());
+        let mut deploy = Step::new("deploy", "./deploy.sh");
         deploy.dependencies = vec!["test".to_string(), "lint".to_string(), "fmt".to_string()];
         deploy.condition = Some("branch == \"main\" && event == \"push\"".to_string());
         example.push(deploy);
