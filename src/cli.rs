@@ -129,9 +129,36 @@ pub fn read_commands(command: &[String]) -> Command {
     match command.first().map(String::as_str) {
         Some("-h" | "help" | "--help") | None => Command::Help,
         Some("-V" | "version" | "--version") => Command::Version,
-        Some("-p" | "plan" | "--plan") => Command::Help,
-        Some("-s" | "show" | "--show") => Command::Help,
-        Some("simulate" | "--simulate") => Command::Help,
-        Some(_command_name) => Command::Invalid("BlaBla".to_string()),
+        Some("-p" | "plan" | "--plan") => match command.get(1).map(String::as_str) {
+            None => Command::Plan(None),
+            Some(name) => Command::Plan(Some(name.to_string())),
+        },
+        Some("-s" | "show" | "--show") => match command.get(1).map(String::as_str) {
+            Some(name) => Command::Show(name.to_string()),
+            None => Command::Invalid("Usage: cinderci show <step>".to_string()),
+        },
+        Some("simulate" | "--simulate") => match command.get(1).map(String::as_str) {
+            Some("fail" | "--fail") => match command.get(2).map(String::as_str) {
+                Some(name) => Command::Simulate(Some(name.to_string())),
+                None => Command::Invalid("Usage: cinderci simulate --fail <step>".to_string()),
+            },
+            None => Command::Simulate(None),
+            Some(name) => Command::Invalid(format!(
+                "Error: Unknown option '{}'\nUsage: cinderci simulate [--fail <step>]",
+                name
+            )),
+        },
+        Some(command_name) => {
+            for (name, _description, stage, available) in HELP_COMMANDS {
+                if command_name == name && !available {
+                    return Command::Locked(name.to_string(), stage);
+                }
+            }
+
+            Command::Invalid(format!(
+                "Command '{}' not available. Use 'cinderci help' to see available commands.",
+                command_name
+            ))
+        }
     }
 }

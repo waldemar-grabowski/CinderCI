@@ -1,11 +1,59 @@
 use std::{env, process::ExitCode};
 
 use cinderci::cli::*;
-use cinderci::model::Pipeline;
+use cinderci::model::*;
 use cinderci::sim::*;
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
+
+    match read_commands(&args) {
+        Command::Help => print_help(),
+        Command::Version => println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")),
+        Command::Plan(Some(name)) => match name.as_str() {
+            "example" => print_plan(&Pipeline::example()),
+            _ => {
+                eprintln!("Unknow pipeline");
+                return ExitCode::from(2);
+            }
+        },
+        Command::Show(name) => {
+            let pipeline = Pipeline::cinderci();
+
+            match pipeline.find_step(&name) {
+                Some(step) => print_step(step, &pipeline),
+
+                None => {
+                    eprintln!(
+                        "Error: no step '{}' (available: {})",
+                        name,
+                        pipeline.step_names()
+                    );
+                    return ExitCode::from(2);
+                }
+            }
+        }
+        Command::Simulate(None) => {
+            let pipeline = Pipeline::cinderci();
+            let state = simulate(&pipeline, None);
+            print_simulation(&pipeline, &state);
+        }
+        Command::Simulate(Some(name)) => {
+            let pipeline = Pipeline::cinderci();
+            if pipeline.find_step(&name).is_none() {
+                eprintln!(
+                    "Error: no step '{}' (available: {})",
+                    name,
+                    pipeline.step_names()
+                );
+                return ExitCode::from(2);
+            }
+        }
+        Command::Invalid(text) => (),
+        Command::Locked(text, number) => (),
+        Command::Plan(None) => (),
+    }
+
     eprintln!("{:?}", read_commands(&args));
 
     let mut args = env::args().skip(1);
