@@ -22,29 +22,33 @@ pub const HELP_COMMANDS: [(&str, &str, u8, bool); 7] = [
     ("tui", "fullscreen tui", 17, false),
 ];
 
-pub fn print_help() {
-    println!("cinderci - local CI/CD, which is building itself 🔥.\n");
-    println!("Commands:");
+pub fn format_help() -> String {
+    let mut text: Vec<String> = vec![];
+    text.push("cinderci - local CI/CD, which is building itself 🔥.".to_string());
+    text.push("".to_string());
+    text.push("Commands:".to_string());
     for (name, desc, etap, avail) in HELP_COMMANDS {
         if avail {
-            println!("   {:<10}    {:<30} ({:<02})", name, desc, etap);
+            text.push(format!("   {:<10}    {:<30} ({:<02})", name, desc,  etap));
         } else {
-            println!("   {:<10} 🔒 {:<30} ({:<02})", name, desc, etap)
+            text.push(format!("   {:<10} 🔒 {:<30} ({:<02})", name, desc, etap));
         }
     }
+    text.join("\n")
 }
 
-pub fn print_plan(pipeline: &Pipeline) {
+pub fn format_plan(pipeline: &Pipeline) -> String {
+    let mut text: Vec<String> = vec![];
     let mut triggers: Vec<String> = vec![];
     for t in &pipeline.trigger {
         triggers.push(t.to_string());
     }
-    println!(
+    text.push(format!(
         "Pipeline: {}   (trigger: {})",
         pipeline.name,
         triggers.join(", ")
-    );
-    println!();
+    ));
+    text.push("".to_string());
 
     let pending = StepStatus::Pending;
     let running = StepStatus::Running;
@@ -53,63 +57,68 @@ pub fn print_plan(pipeline: &Pipeline) {
     let skipped = StepStatus::Skipped("dependency 'test' crashed".to_string());
 
     for s in &pipeline.steps {
-        println!("{}   {:<8}     {}", pending, s.name, s.command);
+        text.push(format!("{}   {:<8}     {}", pending, s.name, s.command));
         if !Step::is_root(s) {
-            println!("                 ↳ needs: {}", s.dependencies.join(", "));
+            text.push(format!("                 ↳ needs: {}", s.dependencies.join(", ")));
             if let Some(condition) = &s.condition {
-                println!("                 ↳ condition:{} ", condition);
+                text.push(format!("                 ↳ condition:{} ", condition));
             }
         };
     }
 
-    println!();
-    println!(
+    text.push("".to_string());
+    text.push(format!(
         "{} steps · {} without dependencies · {} conditional",
         Pipeline::steps_amount(pipeline),
         Pipeline::roots_amount(pipeline),
         Pipeline::conditions_amount(pipeline)
-    );
+    ));
 
-    println!(
+    text.push(format!(
         "Legends: {} · {} · {} · {} · {}",
         pending, running, succeed, failed, skipped
-    );
+    ));
+    text.join("\n")
 }
 
-pub fn print_step(step: &Step, pipeline: &Pipeline) {
-    println!("Step: {}", step.name);
-    println!("  command:      {}", step.command);
+pub fn format_step(step: &Step, pipeline: &Pipeline) -> String{
+    let mut text: Vec<String> = vec![];
+    text.push(format!("Step: {}", step.name));
+    text.push(format!("  command:      {}", step.command));
 
     if step.is_root() {
-        println!("  needs:        - (root)");
+        text.push("  needs:        - (root)".to_string());
     } else {
-        println!("  needs:        {}", step.dependencies.join(", "));
+        text.push(format!("  needs:        {}", step.dependencies.join(", ")));
     }
 
     let dependents = pipeline.dependents_of(&step.name);
 
-    println!(
+    text.push(format!(
         "  needed by:    {}",
         if dependents.is_empty() {
             "-".to_string()
         } else {
             dependents.join(", ")
         }
-    );
+    ));
 
     if let Some(condition) = &step.condition {
-        println!("  condition:    {}", condition);
+        text.push(format!("  condition:    {}", condition));
     }
+
+    text.join("\n")
 }
 
-pub fn print_simulation(pipeline: &Pipeline, state: &RunState) {
+pub fn format_simulation(pipeline: &Pipeline, state: &RunState) -> String{
+    let mut text: Vec<String> = vec![];
     let mut success = 0;
     let mut failed = 0;
     let mut skipped = 0;
 
     for step in &pipeline.steps {
         if let Some(status) = state.statuses.get(&step.name) {
-            println!("  {:<8}{}", step.name, status);
+            text.push(format!("  {:<8}{}", step.name, status));
             match status {
                 StepStatus::Succeeded(_s) => success += 1,
                 StepStatus::Failed(_i) => failed += 1,
@@ -118,11 +127,12 @@ pub fn print_simulation(pipeline: &Pipeline, state: &RunState) {
             }
         }
     }
-    println!();
-    println!(
+    text.push("".to_string());
+    text.push(format!(
         "✓ Succeeded: {}, ✗ Failed: {}, ○ Skipped: {}",
         success, failed, skipped
-    );
+    ));
+    text.join("\n")
 }
 
 pub fn read_commands(command: &[String]) -> Command {
