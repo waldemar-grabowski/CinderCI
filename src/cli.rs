@@ -29,7 +29,7 @@ pub fn format_help() -> String {
     text.push("Commands:".to_string());
     for (name, desc, etap, avail) in HELP_COMMANDS {
         if avail {
-            text.push(format!("   {:<10}    {:<30} ({:<02})", name, desc,  etap));
+            text.push(format!("   {:<10}    {:<30} ({:<02})", name, desc, etap));
         } else {
             text.push(format!("   {:<10} 🔒 {:<30} ({:<02})", name, desc, etap));
         }
@@ -59,7 +59,10 @@ pub fn format_plan(pipeline: &Pipeline) -> String {
     for s in &pipeline.steps {
         text.push(format!("{}   {:<8}     {}", pending, s.name, s.command));
         if !Step::is_root(s) {
-            text.push(format!("                 ↳ needs: {}", s.dependencies.join(", ")));
+            text.push(format!(
+                "                 ↳ needs: {}",
+                s.dependencies.join(", ")
+            ));
             if let Some(condition) = &s.condition {
                 text.push(format!("                 ↳ condition:{} ", condition));
             }
@@ -81,7 +84,7 @@ pub fn format_plan(pipeline: &Pipeline) -> String {
     text.join("\n")
 }
 
-pub fn format_step(step: &Step, pipeline: &Pipeline) -> String{
+pub fn format_step(step: &Step, pipeline: &Pipeline) -> String {
     let mut text: Vec<String> = vec![];
     text.push(format!("Step: {}", step.name));
     text.push(format!("  command:      {}", step.command));
@@ -110,7 +113,7 @@ pub fn format_step(step: &Step, pipeline: &Pipeline) -> String{
     text.join("\n")
 }
 
-pub fn format_simulation(pipeline: &Pipeline, state: &RunState) -> String{
+pub fn format_simulation(pipeline: &Pipeline, state: &RunState) -> String {
     let mut text: Vec<String> = vec![];
     let mut success = 0;
     let mut failed = 0;

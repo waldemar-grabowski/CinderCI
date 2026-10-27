@@ -13,7 +13,10 @@ fn main() -> ExitCode {
         Command::Plan(Some(name)) => match name.as_str() {
             "example" => println!("{}", format_plan(&Pipeline::example())),
             _ => {
-                eprintln!("Error: Unknown pipeline: '{}' (available: cinderci, example)", name);
+                eprintln!(
+                    "Error: Unknown pipeline: '{}' (available: cinderci, example)",
+                    name
+                );
                 return ExitCode::from(2);
             }
         },
@@ -21,7 +24,7 @@ fn main() -> ExitCode {
             let pipeline = Pipeline::cinderci();
 
             match pipeline.find_step(&name) {
-                Some(step) => println!("{}",format_step(step, &pipeline)),
+                Some(step) => println!("{}", format_step(step, &pipeline)),
 
                 None => {
                     eprintln!(
@@ -67,7 +70,7 @@ fn main() -> ExitCode {
                 }
             }
         }
-        Command::Plan(None) => println!("{}",format_plan(&Pipeline::cinderci())),
+        Command::Plan(None) => println!("{}", format_plan(&Pipeline::cinderci())),
     }
 
     ExitCode::SUCCESS
