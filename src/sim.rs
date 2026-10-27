@@ -28,3 +28,51 @@ pub fn simulate(pipeline: &Pipeline, name: Option<&str>) -> RunState {
     }
     state
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::*;
+
+    #[test]
+    fn no_fails_all_passes() {
+        let pipe = Pipeline::cinderci();
+        let pass = simulate(&pipe, None);
+        for step in pass.statuses.values() {
+            assert!(matches!(step, StepStatus::Succeeded(_)));
+        }
+    }
+
+    #[test]
+    fn time_is_predictable() {
+        let pipe = Pipeline::cinderci();
+        let sim = simulate(&pipe, None);
+
+        assert!(
+            matches!(sim.statuses.get("test"), Some(StepStatus::Succeeded(success)) if *success == Duration::from_secs(1))
+        );
+    }
+
+    #[test]
+    fn fail_skips_dependents() {
+        let pipe = Pipeline::cinderci();
+        let sim = simulate(&pipe, Some("test"));
+        assert!(matches!(
+            sim.statuses.get("test"),
+            Some(StepStatus::Failed(1))
+        ));
+        assert!(matches!(
+            sim.statuses.get("build"),
+            Some(StepStatus::Skipped(_))
+        ));
+        assert!(matches!(
+            sim.statuses.get("fmt"),
+            Some(StepStatus::Succeeded(_))
+        ));
+        assert!(matches!(
+            sim.statuses.get("lint"),
+            Some(StepStatus::Succeeded(_))
+        ));
+    }
+}

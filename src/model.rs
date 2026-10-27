@@ -166,3 +166,76 @@ impl std::fmt::Display for Trigger {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn root_has_no_deps() {
+        let step = Step::new("fmt", "cargo fmt --check");
+        assert!(step.is_root());
+    }
+
+    #[test]
+    fn just_roots() {
+        let mut root = 0;
+        let mut cond = 0;
+        let pipe = Pipeline::cinderci();
+        for step in pipe.steps {
+            if step.is_root() {
+                root += 1;
+            } else if step.is_condition() {
+                cond += 1;
+            }
+        }
+        assert_eq!(root, 3);
+        assert_eq!(cond, 0);
+    }
+
+    #[test]
+    fn both_types() {
+        let mut root = 0;
+        let mut cond = 0;
+        let pipe = Pipeline::example();
+        for step in pipe.steps {
+            if step.is_root() {
+                root += 1;
+            } else if step.is_condition() {
+                cond += 1;
+            }
+        }
+        assert_eq!(root, 3);
+        assert_eq!(cond, 1);
+    }
+
+    #[test]
+    fn test_find_step() {
+        let pipe = Pipeline::cinderci();
+        let step = pipe.find_step("test");
+
+        match step {
+            None => assert!(false),
+            _ => assert!(true),
+        }
+    }
+
+    #[test]
+    fn test_find_non_existent() {
+        let pipe = Pipeline::cinderci();
+        let step = pipe.find_step("nope");
+
+        match step {
+            None => assert!(true),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn dependents_of_test() {
+        let pipe = Pipeline::cinderci();
+        let step = pipe.dependents_of("test");
+
+        assert_eq!(step, vec!["build"]);
+    }
+}
