@@ -75,4 +75,41 @@ mod tests {
             Some(StepStatus::Succeeded(_))
         ));
     }
+
+    #[test]
+    fn root_fail_in_example() {
+        let pipe = Pipeline::example();
+        let sim = simulate(&pipe, Some("build"));
+        assert!(matches!(
+            sim.statuses.get("test"),
+            Some(StepStatus::Skipped(_))
+        ));
+        assert!(matches!(
+            sim.statuses.get("build"),
+            Some(StepStatus::Failed(_))
+        ));
+        assert!(matches!(
+            sim.statuses.get("fmt"),
+            Some(StepStatus::Succeeded(_))
+        ));
+        assert!(matches!(
+            sim.statuses.get("lint"),
+            Some(StepStatus::Succeeded(_))
+        ));
+        assert!(matches!(
+            sim.statuses.get("deploy"),
+            Some(StepStatus::Skipped(_))
+        ));
+    }
+
+    #[test]
+    fn no_pending_nor_running() {
+        let pipe = Pipeline::cinderci();
+        let sim = simulate(&pipe, Some("fmt"));
+
+        for status in sim.statuses.iter() {
+            assert_ne!(status.1, &StepStatus::Running);
+            assert_ne!(status.1, &StepStatus::Pending);
+        }
+    }
 }

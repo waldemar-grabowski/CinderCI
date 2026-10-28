@@ -175,3 +175,54 @@ pub fn read_commands(command: &[String]) -> Command {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn short_cmd() {
+        let cmd: Vec<Vec<String>> = vec![vec![
+            "-V".to_string(),
+            "version".to_string(),
+            "--version".to_string(),
+        ]];
+        for command in cmd {
+            assert_eq!(read_commands(&command), Command::Version);
+        }
+    }
+
+    #[test]
+    fn no_arg_help() {
+        let cmd: Vec<String> = vec![];
+        assert_eq!(read_commands(&cmd), Command::Help);
+    }
+
+    #[test]
+    fn simulate_fail() {
+        let cmd: Vec<String> = vec![
+            "simulate".to_string(),
+            "--fail".to_string(),
+            "test".to_string(),
+        ];
+
+        assert_eq!(
+            read_commands(&cmd),
+            Command::Simulate(Some("test".to_string()))
+        );
+    }
+
+    #[test]
+    fn feature_locked() {
+        let cmd: Vec<String> = vec!["run".to_string()];
+
+        assert_eq!(read_commands(&cmd), Command::Locked("run".to_string(), 7));
+    }
+
+    #[test]
+    fn unknown_cmd() {
+        let cmd: Vec<String> = vec!["foo".to_string()];
+        assert_eq!(read_commands(&cmd), Command::Invalid("Command 'foo' not available. Use 'cinderci help' to see available commands.".to_string()));
+    }
+}

@@ -8,7 +8,7 @@ pub enum Trigger {
     Manual,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum StepStatus {
     Pending,
     Running,
