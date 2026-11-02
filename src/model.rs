@@ -8,7 +8,7 @@ pub enum Trigger {
     Manual,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum StepStatus {
     Pending,
     Running,
@@ -214,10 +214,7 @@ mod tests {
         let pipe = Pipeline::cinderci();
         let step = pipe.find_step("test");
 
-        match step {
-            None => assert!(false),
-            _ => assert!(true),
-        }
+        assert!(step.is_some());
     }
 
     #[test]
@@ -225,10 +222,7 @@ mod tests {
         let pipe = Pipeline::cinderci();
         let step = pipe.find_step("nope");
 
-        match step {
-            None => assert!(true),
-            _ => assert!(false),
-        }
+        assert!(step.is_none());
     }
 
     #[test]

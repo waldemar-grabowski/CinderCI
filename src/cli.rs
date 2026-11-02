@@ -1,5 +1,5 @@
 use crate::model::{Pipeline, Step, StepStatus};
-use crate::state::RunState;
+use crate::state::{RunState, summarize};
 
 #[derive(Debug, PartialEq)]
 pub enum Command {
@@ -115,25 +115,20 @@ pub fn format_step(step: &Step, pipeline: &Pipeline) -> String {
 
 pub fn format_simulation(pipeline: &Pipeline, state: &RunState) -> String {
     let mut text: Vec<String> = vec![];
-    let mut success = 0;
-    let mut failed = 0;
-    let mut skipped = 0;
 
+    let end_status: Vec<StepStatus> = state.statuses.values().cloned().collect();
     for step in &pipeline.steps {
         if let Some(status) = state.statuses.get(&step.name) {
             text.push(format!("  {:<8}{}", step.name, status));
-            match status {
-                StepStatus::Succeeded(_s) => success += 1,
-                StepStatus::Failed(_i) => failed += 1,
-                StepStatus::Skipped(_s) => skipped += 1,
-                StepStatus::Running | StepStatus::Pending => (),
-            }
         }
     }
+
     text.push("".to_string());
+    let end_result = summarize(&end_status);
+    let x = if end_result.0 { "success" } else { "failure" };
     text.push(format!(
-        "✓ Succeeded: {}, ✗ Failed: {}, ○ Skipped: {}",
-        success, failed, skipped
+        "Result: {} · {} ✓ · {} ✗ · {} ○",
+        x, end_result.1, end_result.2, end_result.3
     ));
     text.join("\n")
 }
@@ -223,6 +218,12 @@ mod tests {
     #[test]
     fn unknown_cmd() {
         let cmd: Vec<String> = vec!["foo".to_string()];
-        assert_eq!(read_commands(&cmd), Command::Invalid("Command 'foo' not available. Use 'cinderci help' to see available commands.".to_string()));
+        assert_eq!(
+            read_commands(&cmd),
+            Command::Invalid(
+                "Command 'foo' not available. Use 'cinderci help' to see available commands."
+                    .to_string()
+            )
+        );
     }
 }
