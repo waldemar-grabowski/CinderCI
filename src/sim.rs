@@ -17,7 +17,7 @@ use crate::state::RunState;
 ///
 /// ```
 /// use cinderci::model::{Pipeline, StepStatus};
-/// use cinderci::simulation::simulate;
+/// use cinderci::sim::simulate;
 ///
 /// let pipeline = Pipeline::cinderci();
 /// let state = simulate(&pipeline, None);
