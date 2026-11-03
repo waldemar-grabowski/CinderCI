@@ -1,4 +1,3 @@
-
 use std::fmt::Debug;
 
 /// Represents the events that can trigger a pipeline execution.
@@ -85,11 +84,7 @@ impl Pipeline {
         cinderci.push(Step::new("lint", "cargo clippy -- -D warnings"));
         cinderci.push(Step::new("test", "cargo test"));
         let mut build = Step::new("build", "cargo build --release");
-        build.dependencies = vec![
-            "fmt".to_string(),
-            "lint".to_string(),
-            "test".to_string(),
-        ];
+        build.dependencies = vec!["fmt".to_string(), "lint".to_string(), "test".to_string()];
         cinderci.push(build);
 
         Pipeline {
@@ -112,11 +107,7 @@ impl Pipeline {
         test.dependencies = vec!["build".to_string()];
         example.push(test);
         let mut deploy = Step::new("deploy", "./deploy.sh");
-        deploy.dependencies = vec![
-            "test".to_string(),
-            "lint".to_string(),
-            "fmt".to_string(),
-        ];
+        deploy.dependencies = vec!["test".to_string(), "lint".to_string(), "fmt".to_string()];
         deploy.condition = Some("branch == \"main\" && event == \"push\"".to_string());
         example.push(deploy);
 

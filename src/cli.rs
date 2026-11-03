@@ -1,4 +1,3 @@
-
 use crate::model::{Pipeline, Step, StepStatus};
 use crate::state::{RunState, summarize};
 
