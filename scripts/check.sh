@@ -4,6 +4,6 @@ set -e
 
 cargo fmt --check
 
-cargo clippy -- -D
+cargo clippy -- -D warnings
 
 cargo test
