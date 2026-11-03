@@ -1,11 +1,37 @@
 use crate::model::{Pipeline, StepStatus};
 use crate::state::RunState;
 
+/// Simulates the execution of a pipeline.
+///
+/// Provides a way to test pipeline behavior, including successful execution,
+/// failures, and dependency handling, without executing actual commands.
+///
+/// # Arguments
+/// * `pipeline` - The pipeline whose execution will be simulated.
+/// * `name` - Optional name of the step that should fail during simulation.
+///
+/// # Returns
+/// A [`RunState`] containing the simulated execution status of every step.
+///
+/// # Examples
+///
+/// ```
+/// use cinderci::model::{Pipeline, StepStatus};
+/// use cinderci::sim::simulate;
+///
+/// let pipeline = Pipeline::cinderci();
+/// let state = simulate(&pipeline, None);
+///
+/// assert!(state.statuses.values().all(|status| {
+///     matches!(status, StepStatus::Succeeded(_))
+/// }));
+/// ```
 pub fn simulate(pipeline: &Pipeline, name: Option<&str>) -> RunState {
     let mut state = RunState::new(pipeline);
 
     for step in &pipeline.steps {
         let mut reason: Option<String> = None;
+
         for dependency in &step.dependencies {
             if let Some(StepStatus::Failed(_) | StepStatus::Skipped(_)) =
                 state.statuses.get(dependency)
@@ -24,7 +50,104 @@ pub fn simulate(pipeline: &Pipeline, name: Option<&str>) -> RunState {
                 step.command.len() as u64 * 100,
             ))
         };
+
         state.statuses.insert(step.name.clone(), status);
     }
+
     state
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::*;
+
+    #[test]
+    fn no_fails_all_passes() {
+        let pipe = Pipeline::cinderci();
+        let pass = simulate(&pipe, None);
+
+        for step in pass.statuses.values() {
+            assert!(matches!(step, StepStatus::Succeeded(_)));
+        }
+    }
+
+    #[test]
+    fn time_is_predictable() {
+        let pipe = Pipeline::cinderci();
+        let sim = simulate(&pipe, None);
+
+        assert!(
+            matches!(sim.statuses.get("test"), Some(StepStatus::Succeeded(success)) if *success == Duration::from_secs(1))
+        );
+    }
+
+    #[test]
+    fn fail_skips_dependents() {
+        let pipe = Pipeline::cinderci();
+        let sim = simulate(&pipe, Some("test"));
+
+        assert!(matches!(
+            sim.statuses.get("test"),
+            Some(StepStatus::Failed(1))
+        ));
+
+        assert!(matches!(
+            sim.statuses.get("build"),
+            Some(StepStatus::Skipped(_))
+        ));
+
+        assert!(matches!(
+            sim.statuses.get("fmt"),
+            Some(StepStatus::Succeeded(_))
+        ));
+
+        assert!(matches!(
+            sim.statuses.get("lint"),
+            Some(StepStatus::Succeeded(_))
+        ));
+    }
+
+    #[test]
+    fn root_fail_in_example() {
+        let pipe = Pipeline::example();
+        let sim = simulate(&pipe, Some("build"));
+
+        assert!(matches!(
+            sim.statuses.get("test"),
+            Some(StepStatus::Skipped(_))
+        ));
+
+        assert!(matches!(
+            sim.statuses.get("build"),
+            Some(StepStatus::Failed(_))
+        ));
+
+        assert!(matches!(
+            sim.statuses.get("fmt"),
+            Some(StepStatus::Succeeded(_))
+        ));
+
+        assert!(matches!(
+            sim.statuses.get("lint"),
+            Some(StepStatus::Succeeded(_))
+        ));
+
+        assert!(matches!(
+            sim.statuses.get("deploy"),
+            Some(StepStatus::Skipped(_))
+        ));
+    }
+
+    #[test]
+    fn no_pending_nor_running() {
+        let pipe = Pipeline::cinderci();
+        let sim = simulate(&pipe, Some("fmt"));
+
+        for status in sim.statuses.iter() {
+            assert_ne!(status.1, &StepStatus::Running);
+            assert_ne!(status.1, &StepStatus::Pending);
+        }
+    }
 }

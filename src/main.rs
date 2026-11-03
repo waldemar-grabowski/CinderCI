@@ -8,12 +8,15 @@ fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
 
     match read_commands(&args) {
-        Command::Help => print_help(),
+        Command::Help => println!("{}", format_help()),
         Command::Version => println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")),
         Command::Plan(Some(name)) => match name.as_str() {
-            "example" => print_plan(&Pipeline::example()),
+            "example" => println!("{}", format_plan(&Pipeline::example())),
             _ => {
-                eprintln!("Error: Unknown pipeline: '{}' (available: cinderci, example)", name);
+                eprintln!(
+                    "Error: Unknown pipeline: '{}' (available: cinderci, example)",
+                    name
+                );
                 return ExitCode::from(2);
             }
         },
@@ -21,7 +24,7 @@ fn main() -> ExitCode {
             let pipeline = Pipeline::cinderci();
 
             match pipeline.find_step(&name) {
-                Some(step) => print_step(step, &pipeline),
+                Some(step) => println!("{}", format_step(step, &pipeline)),
 
                 None => {
                     eprintln!(
@@ -36,7 +39,7 @@ fn main() -> ExitCode {
         Command::Simulate(None) => {
             let pipeline = Pipeline::cinderci();
             let state = simulate(&pipeline, None);
-            print_simulation(&pipeline, &state);
+            println!("{}", format_simulation(&pipeline, &state));
         }
         Command::Simulate(Some(name)) => {
             let pipeline = Pipeline::cinderci();
@@ -49,7 +52,7 @@ fn main() -> ExitCode {
                 return ExitCode::from(2);
             } else {
                 let state = simulate(&pipeline, Some(&name));
-                print_simulation(&pipeline, &state);
+                println!("{}", format_simulation(&pipeline, &state));
             }
         }
         Command::Invalid(command) => {
@@ -67,7 +70,7 @@ fn main() -> ExitCode {
                 }
             }
         }
-        Command::Plan(None) => print_plan(&Pipeline::cinderci()),
+        Command::Plan(None) => println!("{}", format_plan(&Pipeline::cinderci())),
     }
 
     ExitCode::SUCCESS

@@ -18,7 +18,7 @@ The learning plan lives in Obsidian: `~/Documents/Obsidian/Rust/cinderci/`. The 
 
 If you have access to these files, read them before answering a question about the project.
 
-**Stage status and coding evenings are tracked in Notion** (the single source of truth): page *Student Planner → 🔥 CinderCI* (https://app.notion.com/p/3f4919d27de18157af25c304bd8f3fb4), database **Etapy** (stages: status, deadline, pace; current stage = status „W trakcie”, i.e. in progress) and database **Sesje** (sessions: date, minutes, what was done, next step). If you have access to Notion, read from there. If not, ask the author for the current stage and the last "next step".
+**Stage status and coding evenings are tracked in Notion** (the single source of truth): page *Student Planner → 🔥 CinderCI* (not linked here — private workspace), database **Etapy** (stages: status, deadline, pace; current stage = status „W trakcie”, i.e. in progress) and database **Sesje** (sessions: date, minutes, what was done, next step). If you have access to Notion, read from there. If not, ask the author for the current stage and the last "next step".
 
 Conversation language: **Polish**. Everything published on GitHub (commit messages, pull requests, issues, comments, settings) is written in **English**.
 
