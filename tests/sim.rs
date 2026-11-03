@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod tests {
     use std::time::Duration;
 
@@ -20,7 +19,6 @@ mod tests {
         );
 
         let plan = format_simulation(&pipe, &sim);
-        println!("{}", plan);
 
         assert!(plan.contains("build   ✗ Failed (1)"));
         assert!(plan.contains("Result: failure · 3 ✓ · 1 ✗ · 0 ○"));

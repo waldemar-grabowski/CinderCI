@@ -222,7 +222,7 @@ impl std::fmt::Display for StepStatus {
         match &self {
             Self::Pending => write!(f, "⏳ Pending"),
             Self::Running => write!(f, "▶ Running"),
-            Self::Succeeded(s) => write!(f, "✓ Success ({}s)", s.as_secs_f32()),
+            Self::Succeeded(s) => write!(f, "✓ Success ({:.1}s)", s.as_secs_f32()),
             Self::Failed(e) => write!(f, "✗ Failed ({})", e),
             Self::Skipped(e) => write!(f, "○ Skipped ({})", e),
         }
@@ -254,34 +254,18 @@ mod tests {
 
     #[test]
     fn just_roots() {
-        let mut root = 0;
-        let mut cond = 0;
         let pipe = Pipeline::cinderci();
-        for step in pipe.steps {
-            if step.is_root() {
-                root += 1;
-            } else if step.is_condition() {
-                cond += 1;
-            }
-        }
-        assert_eq!(root, 3);
-        assert_eq!(cond, 0);
+
+        assert_eq!(pipe.roots_amount(), 3);
+        assert_eq!(pipe.conditions_amount(), 0);
     }
 
     #[test]
     fn both_types() {
-        let mut root = 0;
-        let mut cond = 0;
         let pipe = Pipeline::example();
-        for step in pipe.steps {
-            if step.is_root() {
-                root += 1;
-            } else if step.is_condition() {
-                cond += 1;
-            }
-        }
-        assert_eq!(root, 3);
-        assert_eq!(cond, 1);
+
+        assert_eq!(pipe.roots_amount(), 3);
+        assert_eq!(pipe.conditions_amount(), 1);
     }
 
     #[test]

@@ -247,14 +247,13 @@ mod tests {
 
     #[test]
     fn short_cmd() {
-        let cmd: Vec<Vec<String>> = vec![vec![
-            "-V".to_string(),
-            "version".to_string(),
-            "--version".to_string(),
-        ]];
+        let commands = ["-V", "version", "--version"];
 
-        for command in cmd {
-            assert_eq!(read_commands(&command), Command::Version);
+        for command in commands {
+            assert_eq!(
+                read_commands(&[command.to_string()]),
+                Command::Version
+            );
         }
     }
 
