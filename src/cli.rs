@@ -250,10 +250,7 @@ mod tests {
         let commands = ["-V", "version", "--version"];
 
         for command in commands {
-            assert_eq!(
-                read_commands(&[command.to_string()]),
-                Command::Version
-            );
+            assert_eq!(read_commands(&[command.to_string()]), Command::Version);
         }
     }
 
